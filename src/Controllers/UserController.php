@@ -83,7 +83,34 @@ class UserController
         }
     }
 
-    public function getUserByField($user_id, $field_name = "")
+    public function getUserDataById(Request $request, Response $response, $args): Response
+    {
+        $user_id = $args['id'];
+        $field_name = $args['field_name'];
+
+        $this->_db->where('iUserId', $user_id);
+        $data = $this->_db->get('tms_users');
+        if ($field_name == "") {
+            $return_data = $data;
+        } else {
+            $field_names = explode(',', $field_name);
+            $return_data = "";
+            foreach ($field_names as $field) {
+                $return_data .= $data[0][$field] . ' ';
+            }
+            return trim($return_data);
+        }
+        if ($return_data) {
+            $result = [
+                'data' => $data
+            ];
+            return JsonResponse::respond($response, $result, 200, 'Data retrieved successfully');
+        } else {
+            return JsonResponse::respond($response, null, 404, 'Data not found');
+        }
+    }
+
+    public function getUserByField__($user_id, $field_name = "")
     {
         $this->_db->where('iUserId', $user_id);
         $data = $this->_db->get('tms_users');
