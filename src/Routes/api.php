@@ -29,6 +29,8 @@ return function (App $app) {
     });
     
     $app->group('/api', function ($group) {
+        $group->post('/authenticate', [UserController::class, 'authenticate']);
+
         $group->get('/users', UserController::class . ':getUsers');
         $group->get('/users/{id}', UserController::class . ':getUserDataById')->add(new AuthMiddleware());
         $group->get('/getProfile/{id}', UserController::class . ':getUserByField')->add(new AuthMiddleware());

@@ -682,13 +682,73 @@ class UserController
         return NULL;
     }
 
-    public function authenticate($user)
+    public function authenticate(Request $request, Response $response, $args): Response
+    {
+        $bodyContent = $request->getBody()->getContents();
+        //$data = json_decode($request->getBody()->getContents(), true);
+        $data = json_decode($bodyContent, true);
+        //print_r($data);
+        $username = $data["email"];
+        $password = md5($data["password"]);
+
+        $this->_db->where("vEmailAddress", $username);
+        $this->_db->where("vPassword", $password);
+        $user = $this->_db->getOne('tms_users');
+
+        if ($user && count($user) > 0) {
+            if ($user['eUserStatus'] == 4) {
+                $response->getBody()->write(json_encode([
+                    'status' => 401,
+                    'message' => 'Inactive account. Please contact the administrator.'
+                ]));
+                return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            }
+
+            if ($user['activation_status'] == 0) {
+                $response->getBody()->write(json_encode([
+                    'status' => 401,
+                    'message' => 'Your account is not activated. Please activate your account.'
+                ]));
+                return $response->withStatus(401)->withHeader('Content-Type', 'application/json');
+            }
+
+            // Generate JWT Token
+            $issuedAt = time();
+            $expirationTime = $issuedAt + 3600; // Token valid for 1 hour
+            $payload = [
+                'iss' => "yourdomain.com", // Issuer
+                'iat' => $issuedAt,        // Issued at
+                'exp' => $expirationTime,  // Expiration time
+                'sub' => $user['iUserId'], // Subject (user ID)
+                'data' => [
+                    'id' => $user['iUserId'],
+                    'email' => $user['vEmailAddress'],
+                    'name' => $user['vUserName']
+                ]
+            ];
+
+            $response->getBody()->write(json_encode([
+                'status' => 200,
+                'message' => 'Successfully logged in.',
+                'Authorization' => $user['vPassword'],
+                'user_data' => $user
+            ]));
+            return $response->withHeader('Content-Type', 'application/json');
+        } else {
+            $response->getBody()->write(json_encode([
+                'status' => 422,
+                'message' => 'Invalid Username or Password.'
+            ]));
+            return $response->withStatus(422)->withHeader('Content-Type', 'application/json');
+        }
+    }
+    public function authenticate___($user)
     {
         $username = $user["email"];
         $password = md5($user["password"]);
         $this->_db->where("vEmailAddress", $username);
         $this->_db->where('vPassword', $password);
-        $results = $this->_db->getOne(TBL_USERS);
+        $results = $this->_db->getOne('tms_users');
 
         // checking whether any match found or not
         if ($this->_db->count > 0) {
@@ -1146,7 +1206,7 @@ class UserController
     }
 
     //public function getUserDataById($id)
-    public function getUserDataById(Request $request, Response $response, $args): Response
+    public function getUserDataById__(Request $request, Response $response, $args): Response
     {
         $id = $args['id'];
 
